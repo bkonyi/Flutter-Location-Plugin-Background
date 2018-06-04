@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - location_background_plugin (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Pods/.symlinks/flutter/ios_debug_sim_unopt`)
+  - location_background_plugin (from `Pods/.symlinks/plugins/location_background_plugin/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Pods/.symlinks/flutter/ios_debug_sim_unopt
+  location_background_plugin:
+    :path: Pods/.symlinks/plugins/location_background_plugin/ios
+
+SPEC CHECKSUMS:
+  Flutter: 9d0fac939486c9aba2809b7982dfdbb47a7b0296
+  location_background_plugin: 90e86b83178834e3b588aa1afafd04e288e6829a
+
+PODFILE CHECKSUM: 13dcf421f4da2e937a57e8ba760ed880beae536f
+
+COCOAPODS: 1.5.0
