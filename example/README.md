@@ -1,6 +1,6 @@
-# location_background_plugin_example
+# Flutter Background Plugin Example for iOS.
 
-Demonstrates how to use the location_background_plugin plugin.
+Demonstrates how to use the LocationBackgroundPlugin, a sample plugin showcasing Flutter background execution..
 
 ## Getting Started
 

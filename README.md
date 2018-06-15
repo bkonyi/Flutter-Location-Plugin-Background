@@ -1,6 +1,6 @@
-# location_background_plugin
+# Flutter Background Execution Sample - LocationBackgroundPlugin
 
-A new flutter plugin project.
+A example Flutter plugin that showcases background execution using iOS location services. 
 
 ## Getting Started
 
