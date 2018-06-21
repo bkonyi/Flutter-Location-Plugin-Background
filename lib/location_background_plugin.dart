@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 // Required for PluginUtilities.
 import 'dart:ui';
@@ -12,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Types of location activities for iOS.
-/// 
+///
 /// See https://developer.apple.com/documentation/corelocation/clactivitytype
 enum LocationActivityType {
   other,
@@ -95,7 +96,6 @@ _backgroundCallbackDispatcher() {
     // pair[1] = closure library path
     final pair = args[0].cast<String>();
     final cacheKey = pair.join('@');
-
     Function closure;
     // To avoid making repeated lookups of our callback, store the resulting
     // closure in a cache based on the closure name and its library path.
@@ -105,12 +105,17 @@ _backgroundCallbackDispatcher() {
       // PluginUtilities.getClosureByName performs a lookup based on the name
       // of a closure as well as its library Uri.
       closure = PluginUtilities.getClosureByName(
-          name: pair[0], libraryUri: Uri.parse(pair[1]));
+          name: pair[0], libraryPath: pair[1], className: pair[2]);
+
+      if (closure == null) {
+        print('Could not find closure: ${pair[0]} in ${pair[1]}.');
+        print('Either ${pair[0]} does not exist or it is an instance method.');
+        exit(-1);
+      }
       _callbackCache[cacheKey] = closure;
     }
     assert(
         closure != null, 'Could not find closure: ${pair[0]} in ${pair[1]}.');
-
     if (call.method == kOnLocationEvent) {
       final location =
           new Location(args[1], args[2], args[3], args[4], args[5]);
@@ -153,7 +158,7 @@ class LocationBackgroundPlugin {
   }
 
   /// Start getting location updates through `callback`.
-  /// 
+  ///
   /// `callback` is invoked on a background isolate and will not have direct
   /// access to the state held by the main isolate (or any other isolate).
   Future<bool> monitorLocationChanges(
@@ -164,6 +169,7 @@ class LocationBackgroundPlugin {
     return _channel.invokeMethod(_kMonitorLocationChanges, <dynamic>[
       PluginUtilities.getNameOfFunction(callback),
       PluginUtilities.getPathForFunctionLibrary(callback),
+      PluginUtilities.getNameOfFunctionClass(callback),
       pauseLocationUpdatesAutomatically,
       showsBackgroundLocationIndicator,
       distanceFilter,

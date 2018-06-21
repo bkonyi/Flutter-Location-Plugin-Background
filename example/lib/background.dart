@@ -13,11 +13,13 @@ SendPort uiSendPort;
 /// This is an example of a callback for LocationBackgroundPlugin's
 /// `startMonitoringLocation`. A callback can be defined anywhere in an
 /// application's code, but cannot be from another program.
-void locationCallback(Location location) {
-  if (uiSendPort == null) {
-    // We use isolate ports to communicate between the main isolate and spawned
-    // isolates since they do not share memory.
-    uiSendPort = IsolateNameServer.lookupPortByName(kLocationPluginPortName);
+class Foo {
+  static void locationCallback(Location location) {
+    if (uiSendPort == null) {
+      // We use isolate ports to communicate between the main isolate and spawned
+      // isolates since they do not share memory.
+      uiSendPort = IsolateNameServer.lookupPortByName(kLocationPluginPortName);
+    }
+    uiSendPort?.send(location.toJson());
   }
-  uiSendPort?.send(location.toJson());
 }

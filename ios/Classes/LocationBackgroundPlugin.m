@@ -9,6 +9,7 @@
 @implementation LocationBackgroundPlugin {
     NSString *_dartEntryPoint;
     NSString *_dartEntryPointLib;
+    NSString *_dartEntryPointClass;
     CLLocationManager* _locationManager;
     FlutterHeadlessDartRunner* _headlessRunner;
     FlutterMethodChannel *_mainChannel;
@@ -31,7 +32,7 @@ static LocationBackgroundPlugin *instance = nil;
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
   NSArray *arguments = call.arguments;
   if ([@"monitorLocationChanges" isEqualToString:call.method]) {
-    NSAssert(arguments.count == 7,
+    NSAssert(arguments.count == 8,
              @"Invalid argument count for 'monitorLocationChanges'");
     [self monitorLocationChanges:arguments];
     result(@(YES));
@@ -114,11 +115,12 @@ static LocationBackgroundPlugin *instance = nil;
 - (void)monitorLocationChanges:(NSArray*)arguments {
   _dartEntryPoint = arguments[0];
   _dartEntryPointLib = arguments[1];
-  _locationManager.pausesLocationUpdatesAutomatically = arguments[2];
-  _locationManager.showsBackgroundLocationIndicator = arguments[3];
-  _locationManager.distanceFilter = [arguments[4] integerValue];
-  _locationManager.desiredAccuracy = [arguments[5] integerValue];
-  _locationManager.activityType = [arguments[6] integerValue];
+  _dartEntryPointClass = arguments[2];
+  _locationManager.pausesLocationUpdatesAutomatically = arguments[3];
+  _locationManager.showsBackgroundLocationIndicator = arguments[4];
+  _locationManager.distanceFilter = [arguments[5] integerValue];
+  _locationManager.desiredAccuracy = [arguments[6] integerValue];
+  _locationManager.activityType = [arguments[7] integerValue];
   [self->_locationManager startUpdatingLocation];
 }
 
@@ -133,11 +135,12 @@ static LocationBackgroundPlugin *instance = nil;
   [_callbackChannel
       invokeMethod:@"onLocationEvent"
          arguments:@[
-           @[ _dartEntryPoint, _dartEntryPointLib ],
+           @[ _dartEntryPoint, _dartEntryPointLib, _dartEntryPointClass ],
            @(location.timestamp.timeIntervalSince1970),
            @(location.coordinate.latitude), @(location.coordinate.longitude),
            @(location.horizontalAccuracy), @(location.speed)
-         ]];
+         ]
+  ];
 }
 
 @end

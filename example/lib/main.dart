@@ -113,7 +113,7 @@ class _MyAppState extends State<MyApp> {
                     onPressed: () async {
                       if (!_isTracking) {
                         await _locationPlugin
-                            .monitorLocationChanges(locationCallback);
+                            .monitorLocationChanges(Foo.locationCallback);
                       } else {
                         await _locationPlugin.cancelLocationUpdates();
                       }
