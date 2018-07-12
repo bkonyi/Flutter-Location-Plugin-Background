@@ -5,7 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:location_background_plugin/location_background_plugin.dart';
 
-import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui';
 

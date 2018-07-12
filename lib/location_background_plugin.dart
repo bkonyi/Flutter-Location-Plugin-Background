@@ -80,10 +80,11 @@ _backgroundCallbackDispatcher() {
   const MethodChannel _channel = const MethodChannel(
       'plugins.flutter.io/ios_background_location_callback');
 
-  final Map<String, Function> _callbackCache = new Map<String, Function>();
-
   // Setup Flutter state needed for MethodChannels.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Reference to the onLocationEvent callback.
+  Function onLocationEvent;
 
   // This is where the magic happens and we handle background events from the
   // native portion of the plugin. Here we massage the location data into a
@@ -91,35 +92,26 @@ _backgroundCallbackDispatcher() {
   _channel.setMethodCallHandler((MethodCall call) async {
     final args = call.arguments;
 
-    // args[0].runtimeType == List<dynamic>
-    // pair[0] = closure name
-    // pair[1] = closure library path
-    final pair = args[0].cast<String>();
-    final cacheKey = pair.join('@');
-    Function closure;
-    // To avoid making repeated lookups of our callback, store the resulting
-    // closure in a cache based on the closure name and its library path.
-    if (_callbackCache.containsKey(cacheKey)) {
-      closure = _callbackCache[cacheKey];
-    } else {
-      // PluginUtilities.getClosureByName performs a lookup based on the name
-      // of a closure as well as its library Uri.
-      closure = PluginUtilities.getClosureByName(
-          name: pair[0], libraryPath: pair[1], className: pair[2]);
+    Function _performCallbackLookup() {
+      final CallbackHandle handle =
+          new CallbackHandle.fromRawHandle(call.arguments[0]);
+
+      // PluginUtilities.getCallbackFromHandle performs a lookup based on the
+      // handle we retrieved earlier.
+      final Function closure = PluginUtilities.getCallbackFromHandle(handle);
 
       if (closure == null) {
-        print('Could not find closure: ${pair[0]} in ${pair[1]}.');
-        print('Either ${pair[0]} does not exist or it is an instance method.');
+        print('Fatal Error: Callback lookup failed!');
         exit(-1);
       }
-      _callbackCache[cacheKey] = closure;
+      return closure;
     }
-    assert(
-        closure != null, 'Could not find closure: ${pair[0]} in ${pair[1]}.');
+
     if (call.method == kOnLocationEvent) {
+      onLocationEvent ??= _performCallbackLookup();
       final location =
           new Location(args[1], args[2], args[3], args[4], args[5]);
-      closure(location);
+      onLocationEvent(location);
     } else {
       assert(false, "No handler defined for method type: '${call.method}'");
     }
@@ -148,13 +140,15 @@ class LocationBackgroundPlugin {
       this.distanceFilter = 0,
       this.desiredAccuracy = LocationAccuracy.best,
       this.activityType = LocationActivityType.other}) {
-    // Start the headless location service. The parameters here are the name of
-    // the entrypoint for our callback and the path to the library that calls
+    // Start the headless location service. The parameter here is a handle to
+    // a callback managed by the Flutter engine, which allows for us to pass
+    // references to our callbacks between isolates.
     print("Starting LocationBackgroundPlugin service");
-    _channel.invokeMethod(_kStartHeadlessService, <dynamic>[
-      PluginUtilities.getNameOfFunction(_backgroundCallbackDispatcher),
-      PluginUtilities.getPathForFunctionLibrary(_backgroundCallbackDispatcher)
-    ]);
+    final CallbackHandle handle =
+        PluginUtilities.getCallbackHandle(_backgroundCallbackDispatcher);
+    assert(handle != null, 'Unable to lookup callback.');
+    _channel
+        .invokeMethod(_kStartHeadlessService, <dynamic>[handle.toRawHandle()]);
   }
 
   /// Start getting location updates through `callback`.
@@ -166,10 +160,9 @@ class LocationBackgroundPlugin {
     if (callback == null) {
       throw ArgumentError.notNull('callback');
     }
+    final CallbackHandle handle = PluginUtilities.getCallbackHandle(callback);
     return _channel.invokeMethod(_kMonitorLocationChanges, <dynamic>[
-      PluginUtilities.getNameOfFunction(callback),
-      PluginUtilities.getPathForFunctionLibrary(callback),
-      PluginUtilities.getNameOfFunctionClass(callback),
+      handle.toRawHandle(),
       pauseLocationUpdatesAutomatically,
       showsBackgroundLocationIndicator,
       distanceFilter,

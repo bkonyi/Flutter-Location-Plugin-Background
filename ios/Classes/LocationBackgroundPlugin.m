@@ -7,14 +7,12 @@
 #import <CoreLocation/CoreLocation.h>
 
 @implementation LocationBackgroundPlugin {
-    NSString *_dartEntryPoint;
-    NSString *_dartEntryPointLib;
-    NSString *_dartEntryPointClass;
     CLLocationManager* _locationManager;
     FlutterHeadlessDartRunner* _headlessRunner;
-    FlutterMethodChannel *_mainChannel;
     FlutterMethodChannel* _callbackChannel;
+    FlutterMethodChannel* _mainChannel;
     NSObject<FlutterPluginRegistrar> *_registrar;
+    int64_t _onLocationUpdateHandle;
 }
 
 static LocationBackgroundPlugin *instance = nil;
@@ -32,14 +30,14 @@ static LocationBackgroundPlugin *instance = nil;
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
   NSArray *arguments = call.arguments;
   if ([@"monitorLocationChanges" isEqualToString:call.method]) {
-    NSAssert(arguments.count == 8,
+    NSAssert(arguments.count == 6,
              @"Invalid argument count for 'monitorLocationChanges'");
     [self monitorLocationChanges:arguments];
     result(@(YES));
   } else if ([@"startHeadlessService" isEqualToString:call.method]) {
-    NSAssert(arguments.count == 2,
+    NSAssert(arguments.count == 1,
              @"Invalid argument count for 'startHeadlessService'");
-    [self startHeadlessService:arguments[0] libraryUri:arguments[1]];
+    [self startHeadlessService:[arguments[0] longValue]];
   } else if ([@"cancelLocationUpdates" isEqualToString:call.method]) {
     NSAssert(arguments.count == 0,
              @"Invalid argument count for 'cancelLocationUpdates'");
@@ -96,7 +94,10 @@ static LocationBackgroundPlugin *instance = nil;
 // Initializes and starts the background isolate which will process location
 // events. `entrypoint` is the name of the callback to be invoked and `uri` is
 // the URI of the library which contains the callback.
-- (void)startHeadlessService:(NSString *)entrypoint libraryUri:(NSString *)uri {
+- (void)startHeadlessService:(int64_t)handle {
+  FlutterCallbackInformation* info = [FlutterCallbackCache lookupCallbackInformation:handle];
+  NSString* entrypoint = info.callbackName;
+  NSString* uri = info.callbackLibraryPath;
   [_headlessRunner
       runWithEntrypointAndCallback:entrypoint
                         libraryUri:uri
@@ -113,14 +114,12 @@ static LocationBackgroundPlugin *instance = nil;
 
 // Start receiving location updates.
 - (void)monitorLocationChanges:(NSArray*)arguments {
-  _dartEntryPoint = arguments[0];
-  _dartEntryPointLib = arguments[1];
-  _dartEntryPointClass = arguments[2];
-  _locationManager.pausesLocationUpdatesAutomatically = arguments[3];
-  _locationManager.showsBackgroundLocationIndicator = arguments[4];
-  _locationManager.distanceFilter = [arguments[5] integerValue];
-  _locationManager.desiredAccuracy = [arguments[6] integerValue];
-  _locationManager.activityType = [arguments[7] integerValue];
+  _onLocationUpdateHandle = [arguments[0] longValue];
+  _locationManager.pausesLocationUpdatesAutomatically = arguments[1];
+  _locationManager.showsBackgroundLocationIndicator = arguments[2];
+  _locationManager.distanceFilter = [arguments[3] integerValue];
+  _locationManager.desiredAccuracy = [arguments[4] integerValue];
+  _locationManager.activityType = [arguments[5] integerValue];
   [self->_locationManager startUpdatingLocation];
 }
 
@@ -135,7 +134,7 @@ static LocationBackgroundPlugin *instance = nil;
   [_callbackChannel
       invokeMethod:@"onLocationEvent"
          arguments:@[
-           @[ _dartEntryPoint, _dartEntryPointLib, _dartEntryPointClass ],
+           @(_onLocationUpdateHandle),
            @(location.timestamp.timeIntervalSince1970),
            @(location.coordinate.latitude), @(location.coordinate.longitude),
            @(location.horizontalAccuracy), @(location.speed)
